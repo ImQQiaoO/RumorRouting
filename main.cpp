@@ -2,6 +2,7 @@
 #include <map>
 #include <vector>
 #include <random>
+#include <algorithm>
 
 using namespace std;
 
@@ -191,6 +192,7 @@ public:
         int curr_jumps_to_event = 0;
         int curr_node = sink_node;
         bool res = false;
+        vector<int> search_message_path;
         while (curr_TTL != -1) {
             random_device rd;
             mt19937 gen(rd());
@@ -207,8 +209,19 @@ public:
                 << "下一跳邻居为" << next_node << "，"
                 << "生命期为" << curr_TTL << endl;
             nodes[curr_node]->print_event_table();
+            search_message_path.push_back(curr_node);
             if (res) {
-                cout << "找到了代理消息路径和查询消息路径的交汇处" << endl;
+                cout << "找到了代理消息路径和查询消息路径的交汇处，交汇处为" << curr_node << "号节点" << endl;
+                // 沿查询消息的反向路径将代理消息转发给sink节点
+                reverse(search_message_path.begin(), search_message_path.end());
+                cout << "此时，沿查询消息的反向路径将代理消息转发给sink节点" << endl;
+                cout << "路径为：";
+                for (size_t i = 0; i < search_message_path.size(); ++i) {
+                    cout << search_message_path[i];
+                    if (i != search_message_path.size() - 1) {
+                        cout << " -> ";
+                    }
+                }
                 break;
             }
             cout << endl;
