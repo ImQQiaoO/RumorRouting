@@ -58,17 +58,15 @@ struct Node {
     }
 
     bool check_event_table(int event_name) {
-        for (auto event : events_table) {
-            if (event.event_id == event_name) {
-                return true;
-            }
-        }
-        return false;
+        return any_of(events_table.begin(), events_table.end(),
+                      [event_name](const Event &event) {
+                          return event.event_id == event_name;
+                      });
     }
 
     void print_event_table() {
         cout << "-----------节点" << id << "的事件表为-----------" << endl;
-        for (auto event : events_table) {
+        for (const auto event : events_table) {
             cout << "事件名称为" << event.event_id << "，"
                 << "跳数为" << event.jumps_to_event << "，"
                 << "下一跳邻居为" << event.next_neighbors_to_event << endl;
@@ -99,7 +97,7 @@ public:
     }
 
     // 打印无线传感网络
-    void show_network(vector<Node *> &nodes, const size_t length, const size_t width) {
+    void show_network(const vector<Node *> &nodes, const size_t length, const size_t width) {
         for (size_t i = 0; i < length * width; ++i) {
             if (i != 0 && i % width == 0) {
                 cout << endl;
@@ -123,7 +121,7 @@ public:
     }
 
     // 感知到事件的节点概率产生代理信息
-    vector<int> generate_agent_message(vector<Node *> &nodes, const size_t length,
+    vector<int> generate_agent_message(const vector<Node *> &nodes, const size_t length,
                                        const size_t width) {
         const auto width_i = static_cast<int>(width);
         random_device rd;
@@ -153,7 +151,7 @@ public:
     }
 
     // 传播代理信息
-    void propagate_agent_message(vector<Node *> &nodes, int generate_node, int event_name) {
+    void propagate_agent_message(const vector<Node *> &nodes, int generate_node, int event_name) {
         int curr_TTL = CONST_TTL;
         int curr_jumps_to_event = 0;
         int curr_node = generate_node;
@@ -182,11 +180,12 @@ public:
             ++curr_jumps_to_event;
             curr_node = next_node;
             delete agent_message;
+            agent_message = nullptr;
         }
     }
 
     // 传播搜索信息
-    void propagate_search_message(vector<Node *> &nodes, int sink_node, int event_name) {
+    void propagate_search_message(const vector<Node *> &nodes, int sink_node, int event_name) {
         int curr_TTL = CONST_TTL;
         int curr_jumps_to_event = 0;
         int curr_node = sink_node;
@@ -234,7 +233,7 @@ public:
     }
 
 private:
-    void get_neighbors(vector<Node *> &nodes, const size_t length,
+    void get_neighbors(const vector<Node *> &nodes, const size_t length,
                        const size_t width, size_t i) {
 
         nodes[i]->neighbors.push_back(static_cast<int>(i - width));
@@ -262,7 +261,7 @@ private:
 
 // 输出生成代理信息的节点
 int show_generate_node(const size_t C_LENGTH, const size_t C_WIDTH,
-                       vector<Node *> nodes, Network *network) {
+                       const vector<Node *> &nodes, Network *network) {
 
     cout << "现在，假设这些无线传感网络中序号为";
     const auto res = network->generate_agent_message(nodes, C_LENGTH, C_WIDTH);
@@ -281,7 +280,7 @@ int show_generate_node(const size_t C_LENGTH, const size_t C_WIDTH,
     return res[generate_node];
 }
 
-int generate_sink(vector<Node *> &nodes) {
+int generate_sink(const vector<Node *> &nodes) {
     random_device rd;
     mt19937 gen(rd());
     uniform_int_distribution<int> dis(0, static_cast<int>(nodes.size()) - 1);
