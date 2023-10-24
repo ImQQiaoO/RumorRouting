@@ -124,7 +124,6 @@ public:
 
     ~Network() {
         while (!_nodes.empty()) {
-            cout << "del!!" << endl;
             delete _nodes.back();
             _nodes.pop_back();
         }
