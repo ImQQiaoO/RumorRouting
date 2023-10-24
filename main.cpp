@@ -2,9 +2,22 @@
 #include <vector>
 #include <random>
 #include <algorithm>
+#include <memory>
 
 using namespace std;
 
+/**
+ * 传感器网络的长：length，宽：width
+ * 例：
+ *
+ *      0---1---2---3
+ *      |   |   |   |
+ *      4---5---6---7
+ *      |   |   |   |
+ *      8---9---10--11
+ *
+ *  这是一个 length = 3, width = 4 的传感器网络
+ */
 // LENGTH和WIDTH若大于10，会导致输出的无线传感网络不美观
 constexpr size_t LENGTH = 7;
 constexpr size_t WIDTH = 7;
@@ -64,7 +77,7 @@ struct Node {
                       });
     }
 
-    void print_event_table() {
+    void print_event_table() const {
         cout << "-----------节点" << id << "的事件表为-----------" << endl;
         for (const auto event : events_table) {
             cout << "事件名称为" << event.event_id << "，"
@@ -76,57 +89,68 @@ struct Node {
 };
 
 class Network {
-public:
 
-    // 创建无线传感器网络
-    void create_network(vector<Node *> &nodes, const size_t length, const size_t width) {
-        for (size_t i = 0; i < length * width; ++i) {
-            nodes[i] = new Node(static_cast<int>(i), static_cast<int>(i / width),
-                                static_cast<int>(i % width));
-            get_neighbors(nodes, length, width, i);
-
-            //cout << "node " << nodes[i]->id << " neighbors: ";
-            //for (auto neighbor : nodes[i]->neighbors) {
-            //    cout << neighbor << " ";
-            //}
-            //cout << "position is: {" << nodes[i]->position.first << ", "
-            //    << nodes[i]->position.second << "}";
-            //cout << endl;
-
-        }
-    }
-
-    // 打印无线传感网络
-    void show_network(const vector<Node *> &nodes, const size_t length, const size_t width) {
-        for (size_t i = 0; i < length * width; ++i) {
-            if (i != 0 && i % width == 0) {
-                cout << endl;
+    friend int show_generate_node(const shared_ptr<Network> &network);
+    friend int generate_sink(const shared_ptr<Network> &network);
+    friend ostream &operator<<(ostream &os, const Network &network) {
+        for (size_t i = 0; i < network._length * network._width; ++i) {
+            if (i != 0 && i % network._width == 0) {
+                os << endl;
             }
-            cout << nodes[i]->id;
-            if (i % width != width - 1) {
-                if (nodes[i]->id < 10)
-                    cout << "---";
+            os << network._nodes[i]->id;
+            if (i % network._width != network._width - 1) {
+                if (network._nodes[i]->id < 10)
+                    os << "---";
                 else
-                    cout << "--";
+                    os << "--";
             }
-            if (i % width == width - 1) {
-                cout << endl;
-                if (i != length * width - 1) {
-                    for (size_t j = 0; j < width; ++j) {
-                        cout << "|   ";
+            if (i % network._width == network._width - 1) {
+                os << endl;
+                if (i != network._length * network._width - 1) {
+                    for (size_t j = 0; j < network._width; ++j) {
+                        os << "|   ";
                     }
                 }
             }
         }
+        return os;
+    }
+
+public:
+    Network(size_t length, size_t width) : _length(length), _width(width) {
+        _nodes.resize(length * width);
+        create_network(length, width);
+    }
+
+    ~Network() {
+        for (auto node : _nodes) {
+            delete node;
+            node = nullptr;
+        }
+        _nodes.clear();
+    }
+
+    // 禁止拷贝和赋值和移动操作
+    Network(const Network &) = delete;
+    Network &operator=(const Network &) = delete;
+    Network(Network &&) = delete;
+    Network &operator=(Network &&) = delete;
+
+    // 创建无线传感器网络
+    void create_network(const size_t length, const size_t width) {
+        for (size_t i = 0; i < length * width; ++i) {
+            _nodes[i] = new Node(static_cast<int>(i), static_cast<int>(i / width),
+                                 static_cast<int>(i % width));
+            get_neighbors(length, width, i);
+        }
     }
 
     // 感知到事件的节点概率产生代理信息
-    vector<int> generate_agent_message(const vector<Node *> &nodes, const size_t length,
-                                       const size_t width) {
-        const auto width_i = static_cast<int>(width);
+    vector<int> generate_agent_message() const {
+        const auto width_i = static_cast<int>(_width);
         random_device rd;
         mt19937 gen(rd());
-        uniform_int_distribution<int> dis(0, static_cast<int>(nodes.size()) - 1);
+        uniform_int_distribution<int> dis(0, static_cast<int>(_nodes.size()) - 1);
         vector<int> event_area;
         const int agent_message_creator = dis(gen);
         event_area.push_back(agent_message_creator - width_i);
@@ -141,7 +165,7 @@ public:
         for (auto iter = event_area.begin();
              iter != event_area.end(); /* Empty */) {
 
-            if (*iter < 0 || *iter >= static_cast<int>(length * width)) {
+            if (*iter < 0 || *iter >= static_cast<int>(_length * _width)) {
                 iter = event_area.erase(iter);
             } else {
                 ++iter;
@@ -151,7 +175,7 @@ public:
     }
 
     // 传播代理信息
-    void propagate_agent_message(const vector<Node *> &nodes, int generate_node, int event_name) {
+    void propagate_agent_message(int generate_node, int event_name) const {
         int curr_TTL = CONST_TTL;
         int curr_jumps_to_event = 0;
         int curr_node = generate_node;
@@ -159,14 +183,14 @@ public:
             random_device rd;
             mt19937 gen(rd());
             uniform_int_distribution<int> dis(0,
-                                              static_cast<int>(nodes[curr_node]->neighbors.size()) - 1);
-            int selected_neighbors = dis(gen);
-            int next_node = nodes[curr_node]->neighbors[selected_neighbors];
+                                              static_cast<int>(_nodes[curr_node]->neighbors.size()) - 1);
+            const int selected_neighbors = dis(gen);
+            int next_node = _nodes[curr_node]->neighbors[selected_neighbors];
             next_node = curr_TTL == 0 ? -1 : next_node;
             auto agent_message = new AgentMessage(event_name, curr_jumps_to_event,
                                                   next_node, curr_TTL);
             // 检查事件表中是否已经存在该事件
-            nodes[curr_node]->check_event_table(agent_message);
+            _nodes[curr_node]->check_event_table(agent_message);
             //nodes[curr_node]->events_table[event_name].push_back(*agent_message);
 
             cout << "节点" << curr_node << "转发了代理信息，"
@@ -174,7 +198,7 @@ public:
                 << "跳数为" << agent_message->jumps_to_event << "，"
                 << "下一跳邻居为" << agent_message->next_neighbors_to_event << "，"
                 << "生命期为" << agent_message->TTL << endl;
-            nodes[curr_node]->print_event_table();
+            _nodes[curr_node]->print_event_table();
             cout << endl;
             --curr_TTL;
             ++curr_jumps_to_event;
@@ -185,7 +209,7 @@ public:
     }
 
     // 传播搜索信息
-    void propagate_search_message(const vector<Node *> &nodes, int sink_node, int event_name) {
+    void propagate_search_message(int sink_node, int event_name) const {
         int curr_TTL = CONST_TTL;
         int curr_jumps_to_event = 0;
         int curr_node = sink_node;
@@ -195,18 +219,18 @@ public:
             random_device rd;
             mt19937 gen(rd());
             uniform_int_distribution<int> dis(0,
-                                              static_cast<int>(nodes[curr_node]->neighbors.size()) - 1);
-            int selected_neighbors = dis(gen);
-            int next_node = nodes[curr_node]->neighbors[selected_neighbors];
+                                              static_cast<int>(_nodes[curr_node]->neighbors.size()) - 1);
+            const int selected_neighbors = dis(gen);
+            int next_node = _nodes[curr_node]->neighbors[selected_neighbors];
             next_node = curr_TTL == 0 ? -1 : next_node;
             // 检查事件表中是否已经存在该事件
-            res = nodes[curr_node]->check_event_table(event_name);
+            res = _nodes[curr_node]->check_event_table(event_name);
             /*cout << "---------------------------------------------" << res << endl;*/
             cout << "节点" << curr_node << "转发了针对事件" << event_name << "的查找信息，"
                 << "跳数为" << curr_jumps_to_event << "，"
                 << "下一跳邻居为" << next_node << "，"
                 << "生命期为" << curr_TTL << endl;
-            nodes[curr_node]->print_event_table();
+            _nodes[curr_node]->print_event_table();
             search_message_path.push_back(curr_node);
             if (res) {
                 cout << "找到了代理消息路径和查询消息路径的交汇处，交汇处为" << curr_node << "号节点" << endl;
@@ -233,24 +257,26 @@ public:
     }
 
 private:
-    void get_neighbors(const vector<Node *> &nodes, const size_t length,
-                       const size_t width, size_t i) {
+    size_t _length;
+    size_t _width;
+    vector<Node *> _nodes;
 
-        nodes[i]->neighbors.push_back(static_cast<int>(i - width));
+    void get_neighbors(const size_t length, const size_t width, size_t i) const {
+        _nodes[i]->neighbors.push_back(static_cast<int>(i - width));
         // 如果 nodes[i] 不是宽度的倍数
         if (i % width != 0) {
-            nodes[i]->neighbors.push_back(static_cast<int>(i - 1));
+            _nodes[i]->neighbors.push_back(static_cast<int>(i - 1));
         }
         if (i % width != width - 1) {
-            nodes[i]->neighbors.push_back(static_cast<int>(i + 1));
+            _nodes[i]->neighbors.push_back(static_cast<int>(i + 1));
         }
-        nodes[i]->neighbors.push_back(static_cast<int>(i + width));
+        _nodes[i]->neighbors.push_back(static_cast<int>(i + width));
 
-        for (auto iter = nodes[i]->neighbors.begin();
-             iter != nodes[i]->neighbors.end(); /* Empty */) {
+        for (auto iter = _nodes[i]->neighbors.begin();
+             iter != _nodes[i]->neighbors.end(); /* Empty */) {
 
             if (*iter < 0 || *iter >= static_cast<int>(length * width)) {
-                iter = nodes[i]->neighbors.erase(iter);
+                iter = _nodes[i]->neighbors.erase(iter);
             } else {
                 ++iter;
             }
@@ -260,11 +286,9 @@ private:
 };
 
 // 输出生成代理信息的节点
-int show_generate_node(const size_t C_LENGTH, const size_t C_WIDTH,
-                       const vector<Node *> &nodes, Network *network) {
-
+int show_generate_node(const shared_ptr<Network> &network) {
     cout << "现在，假设这些无线传感网络中序号为";
-    const auto res = network->generate_agent_message(nodes, C_LENGTH, C_WIDTH);
+    const auto res = network->generate_agent_message();
     for (int i = 0; i < static_cast<int>(res.size()); ++i) {
         cout << res[i];
         if (i != static_cast<int>(res.size()) - 1)
@@ -280,50 +304,28 @@ int show_generate_node(const size_t C_LENGTH, const size_t C_WIDTH,
     return res[generate_node];
 }
 
-int generate_sink(const vector<Node *> &nodes) {
+int generate_sink(const shared_ptr<Network> &network) {
     random_device rd;
     mt19937 gen(rd());
-    uniform_int_distribution<int> dis(0, static_cast<int>(nodes.size()) - 1);
+    uniform_int_distribution<int> dis(0, static_cast<int>(network->_nodes.size()) - 1);
     const int sink = dis(gen);
-    cout << "sink节点为：" << nodes[sink]->id << endl;
+    cout << "sink节点为：" << network->_nodes[sink]->id << endl;
     return sink;
 }
 
-/**
- * 传感器网络的长：length，宽：width
- * 例：
- *
- *      0---1---2---3
- *      |   |   |   |
- *      4---5---6---7
- *      |   |   |   |
- *      8---9---10--11
- *
- *  这是一个 length = 3, width = 4 的传感器网络
- */
 int main() {
-    vector<Node *> nodes(WIDTH * LENGTH);
-    auto network = new Network();
-    network->create_network(nodes, LENGTH, WIDTH);
+    const auto network = make_shared<Network>(WIDTH, LENGTH);
     cout << "当前的无线传感网络为：" << endl;
-    network->show_network(nodes, LENGTH, WIDTH);
+    cout << *network << endl;
     cout << endl;
     // 生成代理信息的节点id
-    const int generate_node = show_generate_node(LENGTH, WIDTH, nodes, network);
+    const int generate_node = show_generate_node(network);
     // 传播代理信息 
-    int event_name = 0;
-    network->propagate_agent_message(nodes, generate_node, event_name);
+    constexpr int event_name = 0;
+    network->propagate_agent_message(generate_node, event_name);
     // 生成sink节点
-    const int sink_node = generate_sink(nodes);
-    network->propagate_search_message(nodes, sink_node, event_name);
+    const int sink_node = generate_sink(network);
+    network->propagate_search_message(sink_node, event_name);
 
-    // 释放内存
-    delete network;
-    network = nullptr;
-    for (auto node : nodes) {
-        delete node;
-        node = nullptr;
-    }
-    nodes.clear();
     return 0;
 }
