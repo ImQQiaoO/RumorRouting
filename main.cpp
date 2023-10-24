@@ -123,11 +123,11 @@ public:
     }
 
     ~Network() {
-        for (auto node : _nodes) {
-            delete node;
-            node = nullptr;
+        while (!_nodes.empty()) {
+            cout << "del!!" << endl;
+            delete _nodes.back();
+            _nodes.pop_back();
         }
-        _nodes.clear();
     }
 
     // 禁止拷贝和赋值和移动操作
@@ -136,43 +136,7 @@ public:
     Network(Network &&) = delete;
     Network &operator=(Network &&) = delete;
 
-    // 创建无线传感器网络
-    void create_network(const size_t length, const size_t width) {
-        for (size_t i = 0; i < length * width; ++i) {
-            _nodes[i] = new Node(static_cast<int>(i), static_cast<int>(i / width),
-                                 static_cast<int>(i % width));
-            get_neighbors(length, width, i);
-        }
-    }
 
-    // 感知到事件的节点概率产生代理信息
-    vector<int> generate_agent_message() const {
-        const auto width_i = static_cast<int>(_width);
-        random_device rd;
-        mt19937 gen(rd());
-        uniform_int_distribution<int> dis(0, static_cast<int>(_nodes.size()) - 1);
-        vector<int> event_area;
-        const int agent_message_creator = dis(gen);
-        event_area.push_back(agent_message_creator - width_i);
-        if (agent_message_creator % width_i != 0) {
-            event_area.push_back(agent_message_creator - 1);
-        }
-        event_area.push_back(agent_message_creator);
-        if (agent_message_creator % width_i != width_i - 1) {
-            event_area.push_back(agent_message_creator + 1);
-        }
-        event_area.push_back(agent_message_creator + width_i);
-        for (auto iter = event_area.begin();
-             iter != event_area.end(); /* Empty */) {
-
-            if (*iter < 0 || *iter >= static_cast<int>(_length * _width)) {
-                iter = event_area.erase(iter);
-            } else {
-                ++iter;
-            }
-        }
-        return event_area;
-    }
 
     // 传播代理信息
     void propagate_agent_message(int generate_node, int event_name) const {
@@ -260,6 +224,44 @@ private:
     size_t _length;
     size_t _width;
     vector<Node *> _nodes;
+
+    // 创建无线传感器网络
+    void create_network(const size_t length, const size_t width) {
+        for (size_t i = 0; i < length * width; ++i) {
+            _nodes[i] = new Node(static_cast<int>(i), static_cast<int>(i / width),
+                                 static_cast<int>(i % width));
+            get_neighbors(length, width, i);
+        }
+    }
+
+    // 感知到事件的节点概率产生代理信息
+    vector<int> generate_agent_message() const {
+        const auto width_i = static_cast<int>(_width);
+        random_device rd;
+        mt19937 gen(rd());
+        uniform_int_distribution<int> dis(0, static_cast<int>(_nodes.size()) - 1);
+        vector<int> event_area;
+        const int agent_message_creator = dis(gen);
+        event_area.push_back(agent_message_creator - width_i);
+        if (agent_message_creator % width_i != 0) {
+            event_area.push_back(agent_message_creator - 1);
+        }
+        event_area.push_back(agent_message_creator);
+        if (agent_message_creator % width_i != width_i - 1) {
+            event_area.push_back(agent_message_creator + 1);
+        }
+        event_area.push_back(agent_message_creator + width_i);
+        for (auto iter = event_area.begin();
+             iter != event_area.end(); /* Empty */) {
+
+            if (*iter < 0 || *iter >= static_cast<int>(_length * _width)) {
+                iter = event_area.erase(iter);
+            } else {
+                ++iter;
+            }
+        }
+        return event_area;
+    }
 
     void get_neighbors(const size_t length, const size_t width, size_t i) const {
         _nodes[i]->neighbors.push_back(static_cast<int>(i - width));
