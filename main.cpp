@@ -123,11 +123,11 @@ public:
     }
 
     ~Network() {
-        for (auto node : _nodes) {
-            delete node;
-            node = nullptr;
+        while (!_nodes.empty()) {
+            cout << "del!!" << endl;
+            delete _nodes.back();
+            _nodes.pop_back();
         }
-        _nodes.clear();
     }
 
     // 禁止拷贝和赋值和移动操作
