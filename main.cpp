@@ -32,6 +32,11 @@ struct Event {
     Event(int curr_event_id, int curr_jumps_to_event, int curr_next_neighbors_to_event) :
         event_id(curr_event_id), jumps_to_event(curr_jumps_to_event),
         next_neighbors_to_event(curr_next_neighbors_to_event) {}
+    Event(const Event &) = default;
+    Event &operator=(const Event &) = default;
+    Event(Event &&) = default;
+    Event &operator=(Event &&) = default;
+    virtual ~Event() = default;
 };
 
 struct AgentMessage : public Event {       // 代理信息包含生命期TTL和事件信息
@@ -42,6 +47,11 @@ struct AgentMessage : public Event {       // 代理信息包含生命期TTL和�
                  int curr_next_neighbors_to_event, int curr_TTL) :
         Event(curr_event_id, curr_jumps_to_event, curr_next_neighbors_to_event),
         TTL(curr_TTL) {}
+    AgentMessage(const AgentMessage &) = default;
+    AgentMessage &operator=(const AgentMessage &) = default;
+    AgentMessage(AgentMessage &&) = default;
+    AgentMessage &operator=(AgentMessage &&) = default;
+    ~AgentMessage() override = default;
 };
 
 struct Node {
@@ -79,7 +89,7 @@ struct Node {
 
     void print_event_table() const {
         cout << "-----------节点" << id << "的事件表为-----------" << endl;
-        for (const auto event : events_table) {
+        for (const auto &event : events_table) {
             cout << "事件名称为" << event.event_id << "，"
                 << "跳数为" << event.jumps_to_event << "，"
                 << "下一跳邻居为" << event.next_neighbors_to_event << endl;
