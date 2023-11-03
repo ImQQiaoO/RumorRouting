@@ -32,10 +32,6 @@ struct Event {
     Event(int curr_event_id, int curr_jumps_to_event, int curr_next_neighbors_to_event) :
         event_id(curr_event_id), jumps_to_event(curr_jumps_to_event),
         next_neighbors_to_event(curr_next_neighbors_to_event) {}
-    Event(const Event &) = default;
-    Event &operator=(const Event &) = default;
-    Event(Event &&) = default;
-    Event &operator=(Event &&) = default;
     virtual ~Event() = default;
 };
 
@@ -47,10 +43,6 @@ struct AgentMessage : public Event {       // 代理信息包含生命期TTL和�
                  int curr_next_neighbors_to_event, int curr_TTL) :
         Event(curr_event_id, curr_jumps_to_event, curr_next_neighbors_to_event),
         TTL(curr_TTL) {}
-    AgentMessage(const AgentMessage &) = default;
-    AgentMessage &operator=(const AgentMessage &) = default;
-    AgentMessage(AgentMessage &&) = default;
-    AgentMessage &operator=(AgentMessage &&) = default;
     ~AgentMessage() override = default;
 };
 
