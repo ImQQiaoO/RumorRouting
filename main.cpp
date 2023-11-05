@@ -90,6 +90,15 @@ struct Node {
     }
 };
 
+void show_path(const vector<int> &path) {
+    for (size_t i = 0; i < path.size(); ++i) {
+        cout << path[i];
+        if (i != path.size() - 1) {
+            cout << " -> ";
+        }
+    }
+}
+
 class Network {
 
     friend int show_generate_node(const shared_ptr<Network> &network);
@@ -141,6 +150,7 @@ public:
 
     // 传播代理信息
     void propagate_agent_message(int generate_node, int event_name) const {
+        vector<int> propagate_path;      // 仅仅是用来展示传播路径
         int curr_TTL = CONST_TTL;
         int curr_jumps_to_event = 0;
         int curr_node = generate_node;
@@ -157,21 +167,25 @@ public:
             // 检查事件表中是否已经存在该事件
             _nodes[curr_node]->check_event_table(agent_message);
             //nodes[curr_node]->events_table[event_name].push_back(*agent_message);
-
+            propagate_path.push_back(curr_node);
             cout << "节点" << curr_node << "转发了代理信息，"
                 << "事件名称为" << agent_message->event_id << "，"
                 << "跳数为" << agent_message->jumps_to_event << "，"
                 << "下一跳邻居为" << agent_message->next_neighbors_to_event << "，"
                 << "生命期为" << agent_message->TTL << endl;
             _nodes[curr_node]->print_event_table();
-            cout << endl;
             --curr_TTL;
             ++curr_jumps_to_event;
             curr_node = next_node;
             delete agent_message;
             agent_message = nullptr;
         }
+        cout << "传播路径为：";
+        show_path(propagate_path);
+        cout << endl;
+        cout << endl;
     }
+
 
     // 传播搜索信息
     void propagate_search_message(int sink_node, int event_name) const {
@@ -203,12 +217,7 @@ public:
                 reverse(search_message_path.begin(), search_message_path.end());
                 cout << "此时，沿查询消息的反向路径将代理消息转发给sink节点" << endl;
                 cout << "路径为：";
-                for (size_t i = 0; i < search_message_path.size(); ++i) {
-                    cout << search_message_path[i];
-                    if (i != search_message_path.size() - 1) {
-                        cout << " -> ";
-                    }
-                }
+                show_path(search_message_path);
                 break;
             }
             cout << endl;
